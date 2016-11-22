@@ -1,4 +1,4 @@
-import React, {Component} from 'react'
+ import React, {Component} from 'react'
 import {render} from 'react-dom'
 let socket = io();
 
@@ -192,7 +192,7 @@ class Disconnect extends Component {
   }
 
 }
-
+render(<div> Waiting for Match... </div>, document.querySelector('#root'))
 socket.on('start', function(data){
   render(<App data = {data}/>, document.querySelector('#root'))
 });

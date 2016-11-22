@@ -365,6 +365,11 @@
 	  return Disconnect;
 	}(_react.Component);
 
+	(0, _reactDom.render)(_react2.default.createElement(
+	  'div',
+	  null,
+	  ' Waiting for Match... '
+	), document.querySelector('#root'));
 	socket.on('start', function (data) {
 	  (0, _reactDom.render)(_react2.default.createElement(App, { data: data }), document.querySelector('#root'));
 	});

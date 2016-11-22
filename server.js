@@ -44,7 +44,11 @@ io.on('connection', function(socket){
     })
 
     socket.on('disconnect', function() {
-        io.to(game.pair[1]).emit('partner_disconnect','data')
+        if (game)
+            io.to(game.pair[1]).emit('partner_disconnect','data')
+        else {
+            queue.splice(queue.indexOf(socket.id),1)
+        }
     })
 })
 
