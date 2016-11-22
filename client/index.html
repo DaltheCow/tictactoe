@@ -5,13 +5,50 @@
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0">
         <title>tictactoe</title>
         <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css">
+        <script src="https://cdn.socket.io/socket.io-1.4.5.js"></script>
     </head>
     <style>
-        .button {
-            width:30px;
-            height:30px;
-            vertical-align: top;
+        /* attempt to make ios buttons not circles*/
+        button {
+          -webkit-appearance: none;
+          -webkit-border-radius: 0;
         }
+        .button {
+            width: 50px;
+            height: 50px;
+            vertical-align: middle;
+            text-align: center;
+            font-size: 30px;
+            line-height:.25em;
+        }
+
+        .hovermark {
+            color: springgreen;
+            display: none;
+        }
+
+        .yourturn .empty:hover > .hovermark{
+            display: inline;
+        }
+
+        .block {
+            float:left;
+            margin:0 12px;
+        }
+
+        .boards {
+            margin-top: 13px;
+        }
+
+        .result {
+            width: 155px;
+            height: 26px;
+        }
+
+        .clearleft {
+            clear: left;
+        }
+
     </style>
 
     <body>

@@ -69,6 +69,15 @@
 
 	function _inherits(subClass, superClass) { if (typeof superClass !== "function" && superClass !== null) { throw new TypeError("Super expression must either be null or a function, not " + typeof superClass); } subClass.prototype = Object.create(superClass && superClass.prototype, { constructor: { value: subClass, enumerable: false, writable: true, configurable: true } }); if (superClass) Object.setPrototypeOf ? Object.setPrototypeOf(subClass, superClass) : subClass.__proto__ = superClass; }
 
+	var socket = io();
+
+	var ua = navigator.userAgent.toLowerCase();
+	var isMobile = ua.indexOf("mobile") > -1;
+
+	socket.on('connected', function (data) {
+	  socket.emit('matched', data);
+	});
+
 	var App = function (_Component) {
 	  _inherits(App, _Component);
 
@@ -84,7 +93,8 @@
 	      return _react2.default.createElement(
 	        'div',
 	        null,
-	        _react2.default.createElement(Cell, null)
+	        _react2.default.createElement(Tables, { data: this.props.data }),
+	        _react2.default.createElement(Disconnect, null)
 	      );
 	    }
 	  }]);
@@ -92,50 +102,79 @@
 	  return App;
 	}(_react.Component);
 
-	var Cell = function (_Component2) {
-	  _inherits(Cell, _Component2);
+	var Tables = function (_Component2) {
+	  _inherits(Tables, _Component2);
 
-	  function Cell() {
-	    _classCallCheck(this, Cell);
+	  function Tables(props) {
+	    _classCallCheck(this, Tables);
 
-	    var _this2 = _possibleConstructorReturn(this, (Cell.__proto__ || Object.getPrototypeOf(Cell)).call(this));
+	    var _this2 = _possibleConstructorReturn(this, (Tables.__proto__ || Object.getPrototypeOf(Tables)).call(this, props));
 
-	    var makeTableArray = function makeTableArray(rows, cols) {
+	    var makeTableArray = function makeTableArray(rows, cols, table) {
 	      return rows.map(function (row) {
 	        return cols.map(function (el) {
-	          return { id: "btn" + (row * cols.length + el), mark: "" };
+	          var btn = row * cols.length + el;
+	          tics[table][btn] = '';
+	          return { 't': table, 'btn': btn };
 	        });
 	      });
 	    };
-	    var cells = makeTableArray([0, 1, 2], [0, 1, 2]),
-	        tics = {},
-	        mark = "X";
-	    cells.forEach(function (el) {
-	      el.forEach(function (elem) {
-	        tics[elem.id] = "";
-	      });
-	    });
-
-	    _this2.state = { cells: cells, tics: tics, mark: mark };
+	    //tics will hold the marks
+	    //over will hold bool if game is over or not
+	    //turn will hold whose turn it is per board
+	    //winner will hold if there was a winner and if so who it was
+	    //winner need not be a part of the state
+	    //tables will be used to make the boards
+	    var tics = [],
+	        over = {},
+	        turn = {},
+	        mark = {},
+	        winner = {},
+	        gridSize = 3,
+	        games = 6,
+	        gridArray = new Array(gridSize).fill('').map(function (ae, i) {
+	      return i;
+	    }),
+	        gameArray = new Array(games).fill(' '),
+	        tables = gameArray.map(function (el, i) {
+	      over[i] = false;
+	      turn[i] = i % 2 ? this.props.data : !this.props.data;
+	      mark[i] = turn[i] ? 'X' : 'O';
+	      winner[i] = { 'winner': false, 'mark': null };
+	      tics[i] = {};
+	      return makeTableArray(gridArray, gridArray, i);
+	    }, _this2);
+	    _this2.state = { tables: tables, tics: tics, over: over, mark: mark, turn: turn, winner: winner };
 	    return _this2;
 	  }
 
-	  _createClass(Cell, [{
-	    key: 'makeX',
-	    value: function makeX(id) {
-	      var mark = this.state.mark,
-	          newState = this.state.tics;
-	      if (this.state.tics[id] === "") newState[id] = mark;
-	      this.setState({ tics: newState, mark: mark === "X" ? "O" : "X" });
+	  _createClass(Tables, [{
+	    key: 'updateState',
+	    value: function updateState(data) {
+	      var state_turn = this.state.turn;
+	      if (!data.over) state_turn[data.table] = true;
+	      data.over ? this.setState({ tics: data.marks, over: data.over, winner: data.winner }) : this.setState({ tics: data.marks, turn: state_turn });
 	    }
 	  }, {
+	    key: 'componentWillMount',
+	    value: function componentWillMount() {
+	      var context = this;
+	      socket.on('state_update', function (data) {
+	        context.updateState(data);
+	      });
+	    }
+
+	    //glyphsearch circle-o times
+
+	  }, {
 	    key: 'makeTable',
-	    value: function makeTable() {
-	      return this.state.cells.map(function (el, i) {
+	    value: function makeTable(el, i) {
+	      //make a tictactoe board
+	      return el.map(function (elem) {
 	        return _react2.default.createElement(
 	          'tr',
 	          null,
-	          el.map(function (elem) {
+	          elem.map(function (element) {
 	            var _this3 = this;
 
 	            return _react2.default.createElement(
@@ -143,10 +182,17 @@
 	              null,
 	              _react2.default.createElement(
 	                'button',
-	                { className: 'button', ref: elem.id, onClick: function onClick() {
-	                    return _this3.makeX(elem.id);
+	                { className: 'btn btn-default button' + (isMobile ? '' : this.state.tics[element.t][element.btn] === '' ? ' empty' : ''),
+	                  style: { color: this.state.mark[element.t] === this.state.tics[element.t][element.btn] ? "black" : "indianred" },
+	                  onClick: function onClick() {
+	                    return _this3.state.over[element.t] ? {} : _this3.takeTurn(element.t, element.btn);
 	                  } },
-	                this.state.tics[elem.id]
+	                this.state.tics[element.t][element.btn],
+	                _react2.default.createElement(
+	                  'span',
+	                  { className: 'hovermark' },
+	                  this.state.mark[element.t]
+	                )
 	              )
 	            );
 	          }, this)
@@ -154,35 +200,174 @@
 	      }, this);
 	    }
 	  }, {
+	    key: 'takeTurn',
+	    value: function takeTurn(t, btn) {
+	      var state_tics = this.state.tics,
+	          state_turn = this.state.turn;
+	      if (state_turn[t] && state_tics[t][btn] === '') {
+	        state_tics[t][btn] = this.state.mark[t];
+	        state_turn[t] = false;
+	        this.setState({ tics: state_tics, turn: state_turn });
+	        var gamestate = this.gameState(t),
+	            data = gamestate.over[t] ? { 'marks': state_tics, 'over': gamestate.over, 'table': t, 'winner': gamestate.winner } : { 'marks': state_tics, 'table': t };
+	        socket.emit('state_update', data);
+	      }
+	    }
+	  }, {
 	    key: 'gameState',
-	    value: function gameState() {
-	      //check if someone won
-	      //else if board is full then cat's game
+	    value: function gameState(t) {
+	      function check(array) {
+	        return array.reduce(function (a, b) {
+	          return a && a === b ? a : false;
+	        });
+	      }
+	      var btns = this.state.tics[t],
+	          toReduce = this.state.tables[0].map(function (ae, i, array) {
+	        return array.map(function (ae, i, array) {
+	          return i;
+	        });
+	      }),
+	          cols = void 0,
+	          rows = void 0,
+	          diag1 = void 0,
+	          diag2 = void 0;
+
+	      rows = toReduce.reduce(function (a, b, i, array) {
+	        return (Array.isArray(a) ? check(a.map(function (ae, j) {
+	          return btns[array.length * (i - 1) + j];
+	        })) : a) || check(b.map(function (ae, j) {
+	          return btns[array.length * i + j];
+	        }));
+	      });
+	      cols = toReduce.reduce(function (a, b, i, array) {
+	        return (Array.isArray(a) ? check(a.map(function (ae, j) {
+	          return btns[array.length * j + (i - 1)];
+	        })) : a) || check(b.map(function (ae, j) {
+	          return btns[array.length * j + i];
+	        }));
+	      });
+	      diag1 = check(toReduce.map(function (ae, i, array) {
+	        return btns[i * array.length + i];
+	      }));
+	      diag2 = check(toReduce.map(function (ae, i, array) {
+	        return btns[i * array.length + (array.length - 1 - i)];
+	      }));
+
+	      var xInaRow = rows || cols || diag1 || diag2,
+	          over = this.state.over,
+	          winner = this.state.winner;
+	      if (xInaRow) {
+	        over[t] = true;
+	        winner[t].winner = true;
+	        winner[t].mark = xInaRow;
+	        this.setState({ winner: winner });
+	      } else {
+	        var flag = true;
+	        for (var mark in btns) {
+	          if (btns[mark] === '') flag = false;
+	        }if (flag) over[t] = true;
+	      }
+	      if (over[t]) this.setState({ over: over });
+	      return { over: over, winner: winner };
+	    }
+	  }, {
+	    key: 'gameStateOutput',
+	    value: function gameStateOutput(i) {
+	      if (this.state.over[i]) {
+	        return this.state.winner[i].winner ? this.state.winner[i].mark + " WINS!" : "CAT'S GAME";
+	      } else {
+	        return this.state.turn[i] ? "Your turn " + this.state.mark[i] : "Wait your turn";
+	      }
 	    }
 	  }, {
 	    key: 'render',
 	    value: function render() {
-	      //check if game is over yet here
+	      //provides a div that will clear:left to keep tables formatted nicely
+	      //add: check the amount of columns of games the user's screen size can support and set that as max
+	      var needsClearingDiv = function needsClearingDiv(i, numGames) {
+	        var breakAt = Math.ceil(Math.sqrt(numGames > 2 ? 2 : numGames));
+	        return i % breakAt === breakAt - 1 ? _react2.default.createElement('div', { className: 'clearleft' }) : '';
+	      };
+
 	      return _react2.default.createElement(
 	        'div',
-	        null,
-	        _react2.default.createElement(
-	          'table',
-	          null,
-	          _react2.default.createElement(
-	            'tbody',
+	        { className: 'boards' },
+	        this.state.tables.map(function (el, i) {
+	          var block = _react2.default.createElement(
+	            'div',
 	            null,
-	            this.makeTable()
-	          )
-	        )
+	            _react2.default.createElement(
+	              'div',
+	              { className: 'block' },
+	              _react2.default.createElement(
+	                'table',
+	                { className: this.state.turn[i] ? "yourturn" : "",
+	                  style: { border: "3px solid " + (this.state.turn[i] ? "springgreen" : "red") } },
+	                _react2.default.createElement(
+	                  'tbody',
+	                  null,
+	                  this.makeTable(el, i)
+	                )
+	              ),
+	              _react2.default.createElement(
+	                'div',
+	                { className: 'result' },
+	                this.gameStateOutput(i)
+	              )
+	            ),
+	            needsClearingDiv(i, this.state.tables.length)
+	          );
+	          return block;
+	        }, this)
 	      );
 	    }
 	  }]);
 
-	  return Cell;
+	  return Tables;
 	}(_react.Component);
 
-	(0, _reactDom.render)(_react2.default.createElement(App, null), document.querySelector('#root'));
+	var Disconnect = function (_Component3) {
+	  _inherits(Disconnect, _Component3);
+
+	  function Disconnect() {
+	    _classCallCheck(this, Disconnect);
+
+	    var _this4 = _possibleConstructorReturn(this, (Disconnect.__proto__ || Object.getPrototypeOf(Disconnect)).call(this));
+
+	    var disconnect = '';
+	    _this4.state = { disconnect: disconnect };
+	    return _this4;
+	  }
+
+	  _createClass(Disconnect, [{
+	    key: 'componentWillMount',
+	    value: function componentWillMount() {
+	      var context = this;
+	      socket.on('partner_disconnect', function (data) {
+	        return context.setState({ disconnect: _react2.default.createElement(
+	            'div',
+	            null,
+	            'Partner Disconnected'
+	          ) });
+	      });
+	    }
+	  }, {
+	    key: 'render',
+	    value: function render() {
+	      return _react2.default.createElement(
+	        'div',
+	        null,
+	        this.state.disconnect
+	      );
+	    }
+	  }]);
+
+	  return Disconnect;
+	}(_react.Component);
+
+	socket.on('start', function (data) {
+	  (0, _reactDom.render)(_react2.default.createElement(App, { data: data }), document.querySelector('#root'));
+	});
 
 /***/ },
 /* 2 */
